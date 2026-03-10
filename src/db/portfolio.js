@@ -1,3 +1,4 @@
+// src/db/portfolio.js
 import sqlite3 from 'sqlite3';
 import { promisify } from 'util';
 
@@ -27,7 +28,6 @@ export async function placeVirtualTrade(symbol, qty, side, price, stop_loss = nu
 }
 
 export async function getPortfolio() {
-    // Only return open positions
     return await all(`SELECT * FROM portfolio WHERE status = 'OPEN'`);
 }
 

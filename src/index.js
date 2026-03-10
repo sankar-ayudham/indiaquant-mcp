@@ -1,5 +1,7 @@
+
 const originalConsoleLog = console.log;
 console.log = (...args) => { console.error(...args); };
+
 
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
@@ -63,16 +65,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 const pnl = (live.price - pos.buy_price) * pos.qty * (pos.side === 'BUY' ? 1 : -1);
                 totalPnl += pnl;
                 
-                // Risk Score based on a simple historical volatility proxy (price variance)
-                const riskScore = (live.price * 0.02 * pos.qty).toFixed(2); // Simplified 2% daily VaR proxy
-                
-                // Auto Stop-Loss / Target Management
+                const riskScore = (live.price * 0.02 * pos.qty).toFixed(2);
                 let alert = "Active";
+                
                 if (pos.side === 'BUY') {
                     if (pos.stop_loss && live.price <= pos.stop_loss) { alert = "STOP_LOSS_HIT"; await updateTradeStatus(pos.id, 'CLOSED'); }
                     if (pos.target_price && live.price >= pos.target_price) { alert = "TARGET_HIT"; await updateTradeStatus(pos.id, 'CLOSED'); }
                 }
-                
                 return { ...pos, current_price: live.price, pnl, risk_score_var: riskScore, trade_status: alert };
             }));
             return { content: [{ type: "text", text: JSON.stringify({ positions: updatedPositions, totalPnl }, null, 2) }] };
