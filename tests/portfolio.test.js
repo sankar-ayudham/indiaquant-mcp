@@ -1,4 +1,3 @@
-// tests/portfolio.test.js
 import { initDb, placeVirtualTrade, getPortfolio } from '../src/db/portfolio.js';
 
 describe('Portfolio Risk Manager Integration', () => {

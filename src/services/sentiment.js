@@ -1,12 +1,11 @@
-// src/services/sentiment.js
 import axios from 'axios';
 
 const BULLISH_WORDS = ['surge', 'profit', 'up', 'growth', 'buy', 'beat', 'record', 'high', 'dividend', 'win', 'rally'];
 const BEARISH_WORDS = ['loss', 'drop', 'crash', 'down', 'miss', 'sell', 'low', 'debt', 'lawsuit', 'warning', 'plunge'];
 
 export async function analyzeSentiment(symbol) {
-    const apiKey = process.env.NEWSAPI_KEY;
-    if (!apiKey) throw new Error("NEWSAPI_KEY is missing in environment variables.");
+    // FIX: Hardcoded to bypass Windows environment variable quirks
+    const apiKey = "0dc8fbb385ea47a99e2142f7bfab720b"; 
 
     const query = symbol.replace('.NS', '').replace('.BO', '');
     const url = `https://newsapi.org/v2/everything?q=${query}+stock&sortBy=publishedAt&language=en&pageSize=10&apiKey=${apiKey}`;

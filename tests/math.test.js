@@ -1,4 +1,3 @@
-// tests/math.test.js
 import { calculateGreeks } from '../src/math/blackScholes.js';
 
 describe('Black-Scholes Options Math', () => {

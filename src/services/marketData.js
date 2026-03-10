@@ -1,4 +1,3 @@
-// src/services/marketData.js
 import YahooFinance from 'yahoo-finance2';
 import { RSI, MACD, BollingerBands } from 'technicalindicators';
 import { analyzeSentiment } from './sentiment.js';
@@ -14,8 +13,10 @@ export async function getLivePrice(symbol) {
 export async function generateSignal(symbol, period = 14) {
     const formattedSymbol = formatSymbol(symbol);
     const queryOptions = { period1: '3mo', interval: '1d' };
-    const result = await yahooFinance.historical(formattedSymbol, queryOptions);
-    const closes = result.map(candle => candle.close);
+    
+    // FIX: Using .chart() instead of .historical() for v3 compatibility
+    const chartData = await yahooFinance.chart(formattedSymbol, queryOptions);
+    const closes = chartData.quotes.map(candle => candle.close).filter(c => c !== null);
     
     const rsiResult = RSI.calculate({ values: closes, period });
     const macdResult = MACD.calculate({ values: closes, fastPeriod: 12, slowPeriod: 26, signalPeriod: 9, SimpleMAOscillator: false, SimpleMASignal: false });
@@ -27,7 +28,7 @@ export async function generateSignal(symbol, period = 14) {
     const lastClose = closes[closes.length - 1];
 
     const recentHighs = closes.slice(-10).sort((a, b) => b - a);
-    const isDoubleTop = (recentHighs[0] - recentHighs[1]) / recentHighs[0] < 0.01 && latestRSI > 65;
+    const isDoubleTop = recentHighs.length > 1 && (recentHighs[0] - recentHighs[1]) / recentHighs[0] < 0.01 && latestRSI > 65;
 
     let baseSignal = "HOLD"; 
     let confidence = 50;
@@ -38,15 +39,15 @@ export async function generateSignal(symbol, period = 14) {
         baseSignal = "SELL"; confidence = isDoubleTop ? 90 : 80;
     }
 
-    // Combine Technicals + Sentiment into final score
+    // Combine Technicals + Sentiment
     let finalSignal = baseSignal;
     try {
         const sentimentData = await analyzeSentiment(symbol);
         if (sentimentData.signal === 'BULLISH' && baseSignal === 'BUY') confidence = Math.min(100, confidence + 15);
         if (sentimentData.signal === 'BEARISH' && baseSignal === 'SELL') confidence = Math.min(100, confidence + 15);
-        if (sentimentData.signal === 'BEARISH' && baseSignal === 'BUY') confidence -= 20; // Conflict lowers confidence
+        if (sentimentData.signal === 'BEARISH' && baseSignal === 'BUY') confidence -= 20; 
     } catch (e) {
-        // Fallback to purely technical if NewsAPI limits are hit
+        // Fallback to purely technical
     }
 
     return { 
@@ -57,7 +58,6 @@ export async function generateSignal(symbol, period = 14) {
         indicators: { RSI: latestRSI, MACD: latestMACD.histogram } 
     };
 }
-
 export async function getOptionsChain(symbol) {
     const options = await yahooFinance.options(formatSymbol(symbol));
     if (!options || !options.options || options.options.length === 0) throw new Error("No options data found.");

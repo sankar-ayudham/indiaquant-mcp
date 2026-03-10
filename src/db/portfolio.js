@@ -1,4 +1,3 @@
-// src/db/portfolio.js
 import sqlite3 from 'sqlite3';
 import { promisify } from 'util';
 

@@ -1,9 +1,5 @@
-// src/index.js
-
-// --- CRITICAL MCP FIX ---
 const originalConsoleLog = console.log;
 console.log = (...args) => { console.error(...args); };
-// ------------------------
 
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";

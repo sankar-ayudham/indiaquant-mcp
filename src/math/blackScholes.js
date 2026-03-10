@@ -1,5 +1,3 @@
-// src/math/blackScholes.js
-
 function CND(x) {
     const a1 = 0.31938153, a2 = -0.356563782, a3 = 1.781477937, a4 = -1.821255978, a5 = 1.330274429;
     const L = Math.abs(x);
