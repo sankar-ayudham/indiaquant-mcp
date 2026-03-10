@@ -1,6 +1,7 @@
 // src/services/marketData.js
 import YahooFinance from 'yahoo-finance2';
 import { RSI, MACD, BollingerBands } from 'technicalindicators';
+import { analyzeSentiment } from './sentiment.js';
 
 const yahooFinance = new YahooFinance({ suppressNotices: ['yahooSurvey'] });
 const formatSymbol = (symbol) => symbol.endsWith('.NS') || symbol.endsWith('.BO') || symbol.startsWith('^') ? symbol : `${symbol}.NS`;
@@ -11,8 +12,9 @@ export async function getLivePrice(symbol) {
 }
 
 export async function generateSignal(symbol, period = 14) {
+    const formattedSymbol = formatSymbol(symbol);
     const queryOptions = { period1: '3mo', interval: '1d' };
-    const result = await yahooFinance.historical(formatSymbol(symbol), queryOptions);
+    const result = await yahooFinance.historical(formattedSymbol, queryOptions);
     const closes = result.map(candle => candle.close);
     
     const rsiResult = RSI.calculate({ values: closes, period });
@@ -27,15 +29,33 @@ export async function generateSignal(symbol, period = 14) {
     const recentHighs = closes.slice(-10).sort((a, b) => b - a);
     const isDoubleTop = (recentHighs[0] - recentHighs[1]) / recentHighs[0] < 0.01 && latestRSI > 65;
 
-    let signal = "HOLD"; let confidence = 50;
+    let baseSignal = "HOLD"; 
+    let confidence = 50;
 
     if (latestRSI < 30 && latestMACD.histogram > 0 && lastClose <= latestBB.lower) {
-        signal = "BUY"; confidence = 85;
+        baseSignal = "BUY"; confidence = 80;
     } else if ((latestRSI > 70 && latestMACD.histogram < 0) || isDoubleTop) {
-        signal = "SELL"; confidence = isDoubleTop ? 95 : 85;
+        baseSignal = "SELL"; confidence = isDoubleTop ? 90 : 80;
     }
 
-    return { symbol, signal, confidence, pattern_detected: isDoubleTop ? "Double Top" : "None", indicators: { RSI: latestRSI, MACD: latestMACD.histogram } };
+    // Combine Technicals + Sentiment into final score
+    let finalSignal = baseSignal;
+    try {
+        const sentimentData = await analyzeSentiment(symbol);
+        if (sentimentData.signal === 'BULLISH' && baseSignal === 'BUY') confidence = Math.min(100, confidence + 15);
+        if (sentimentData.signal === 'BEARISH' && baseSignal === 'SELL') confidence = Math.min(100, confidence + 15);
+        if (sentimentData.signal === 'BEARISH' && baseSignal === 'BUY') confidence -= 20; // Conflict lowers confidence
+    } catch (e) {
+        // Fallback to purely technical if NewsAPI limits are hit
+    }
+
+    return { 
+        symbol: formattedSymbol, 
+        signal: finalSignal, 
+        confidence_score: confidence, 
+        pattern_detected: isDoubleTop ? "Double Top" : "None", 
+        indicators: { RSI: latestRSI, MACD: latestMACD.histogram } 
+    };
 }
 
 export async function getOptionsChain(symbol) {

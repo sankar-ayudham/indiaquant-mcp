@@ -12,15 +12,26 @@ export async function initDb() {
         symbol TEXT,
         qty INTEGER,
         buy_price REAL,
-        side TEXT
+        side TEXT,
+        stop_loss REAL,
+        target_price REAL,
+        status TEXT DEFAULT 'OPEN'
     )`);
 }
 
-export async function placeVirtualTrade(symbol, qty, side, price) {
-    await run(`INSERT INTO portfolio (symbol, qty, buy_price, side) VALUES (?, ?, ?, ?)`, [symbol, qty, price, side]);
-    return { status: 'success', symbol, qty, side, execution_price: price };
+export async function placeVirtualTrade(symbol, qty, side, price, stop_loss = null, target = null) {
+    await run(
+        `INSERT INTO portfolio (symbol, qty, buy_price, side, stop_loss, target_price) VALUES (?, ?, ?, ?, ?, ?)`, 
+        [symbol, qty, price, side, stop_loss, target]
+    );
+    return { status: 'success', symbol, qty, side, execution_price: price, stop_loss, target };
 }
 
 export async function getPortfolio() {
-    return await all(`SELECT * FROM portfolio`);
+    // Only return open positions
+    return await all(`SELECT * FROM portfolio WHERE status = 'OPEN'`);
+}
+
+export async function updateTradeStatus(id, newStatus) {
+    await run(`UPDATE portfolio SET status = ? WHERE id = ?`, [newStatus, id]);
 }
